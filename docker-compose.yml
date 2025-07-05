@@ -1,0 +1,69 @@
+services:
+  app:
+    build:
+      context: ./SeachFood
+      dockerfile: Dockerfile
+    networks:
+        - docker-network
+    ports:
+      - 9000:9000
+    depends_on:
+      - db
+
+  queue-worker:
+    build:
+      context: ./SeachFood
+      dockerfile: Dockerfile
+    networks:
+      - docker-network
+    depends_on:
+      - db
+    command: php artisan queue:work
+  
+  caddy:
+    image: caddy:latest
+    ports:
+      - 800:800
+      - 443:443
+    volumes:
+      - ./laravel-app:/var/www/html
+      - ./Caddyfile:/etc/caddy/Caddyfile
+    networks:
+      - docker-network
+    depends_on:
+      - app
+
+  db:
+    image: bitnami/mysql:8.0
+    platform: linux/amd64
+    ports:
+    - 3306:3306
+    volumes:
+    - db-data:/bitnami/mysql
+    environment:
+    - MYSQL_ROOT_PASSWORD=@Bc12345
+    - MYSQL_DATABASE=seachfood
+    networks:
+      - docker-network
+
+  redis:
+    image: bitnami/redis:7.2
+    platform: linux/amd64
+    ports:
+      - 6379:6379
+    volumes:
+      - redis-data:/bitnami/redis/data
+    environment:
+      - ALLOW_EMPTY_PASSWORD=no
+      - REDIS_PASSWORD=Redis
+      - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL
+    networks:
+      - docker-network
+
+volumes:
+  db-data:
+  redis-data:
+
+networks:
+  docker-network:
+    driver: bridge
